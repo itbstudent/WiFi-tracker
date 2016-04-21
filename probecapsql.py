@@ -34,6 +34,7 @@ try:
     cur.execute('CREATE TABLE IF NOT EXISTS ssid(id serial not null UNIQUE,name varchar(32) not null, lat numeric, long numeric, PRIMARY KEY(name));')
     cur.execute('grant usage,select on sequence ssid_id_seq to probecap;')
     cur.execute('CREATE TABLE IF NOT EXISTS probe(station int not null,foreign key (station) references station(id),ssid int null,foreign key (ssid) references ssid(id),seen timestamp without time zone);')
+    cur.execute('CREATE TABLE IF NOT EXISTS beacon(station int not null,foreign key (station) references station(id),ssid int references ssid(id) null,seen timestamp without time zone);')
     cur.execute("""SELECT TABLE_NAME FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';""")
     result = cur.fetchall()
     print(result)

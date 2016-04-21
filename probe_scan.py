@@ -4,32 +4,18 @@ logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 from scapy.all import sniff
 import sys
 import struct
-import json
 import psycopg2
 import datetime
-from io import open
-import telegram
 import manuf 
-import os
-import wifi_mon
-import gmplot
 
-# Console colors
-W  = '\033[0m'  # white (normal)
-R  = '\033[31m' # red
-G  = '\033[32m' # green
-O  = '\033[33m' # orange
-B  = '\033[34m' # blue
-P  = '\033[35m' # purple
-C  = '\033[36m' # cyan
-GR = '\033[37m' # gray
-T  = '\033[93m' # tan
 
 MGMT_TYPE = 0x0
 PROBE_SUBTYPE = 0x04
+BEACON_SUBTYPE = 0x08
 
 FMT_HEADER_80211 = "<HH6s6s6sH"
 WLAN_MGMT_ELEMENT = "<BB"
+BEACON_FIXED_PARAMETERS = "<xxxxxxxxHH"
 
 TO_DS_BIT = 2**9
 FROM_DS_BIT = 2**10
@@ -45,6 +31,7 @@ class Handler(object):
     
         if self.conn == None:
             self.conn = psycopg2.connect(database='wifi', user='probecap', host = 'localhost', password='pass')
+            
         return self.conn
         
     def __call__(self,pkt):
@@ -76,12 +63,11 @@ class Handler(object):
         conn = self.getDatabaseConnection()
         cur = conn.cursor()
         
-        cur.execute('Select id,lastseen from station where mac = %s;',(encodeMac(srcAddr),))
+        cur.execute("Select id,lastseen from station where mac = %s;",(encodeMac(srcAddr),))
         r = cur.fetchone()
         mac = encodeMac(srcAddr)
-        #If mac never seen
+        #If never seen, add the station to the database
         if r == None:
-            #If seen, update the last seen time of the station 
             getmac = manuf.MacParser()
             model = getmac.get_manuf(mac)
             print model,mac
@@ -94,19 +80,24 @@ class Handler(object):
             cur.execute("""Insert into station(mac, model, firstSeen,lastSeen) VALUES(%s, %s, current_timestamp at time zone 'utc',current_timestamp at time zone 'utc') returning id;""",(encodeMac(srcAddr),model,))
             r = cur.fetchone()
             suid = r
+        #If seen, update the last seen time of the station 
         else:
             suid,lastSeen = r
-            cur.execute('Update station set lastSeen = %s where id = %s',(datetime.datetime.now(),suid,))
+            cur.execute("Update station set lastSeen = current_timestamp at time zone 'utc' where id = %s",(suid,))
         cur.close()
         conn.commit()
         
-        #If the packet subtype is not probe
+        #If the packet subtype is not probe or beacon ignore the rest of it
+        isBeacon = pkt.subtype == BEACON_SUBTYPE
         isProbe = pkt.subtype == PROBE_SUBTYPE
-        if not isProbe:
+        if not (isBeacon or isProbe):
             return
         
         #Extract each tag from the payload
         tags = payload[headerSize:]
+        
+        if isBeacon:
+            tags = tags[struct.calcsize(BEACON_FIXED_PARAMETERS):]
         
         ssid = None
         while len(tags) != 0:
@@ -140,13 +131,12 @@ class Handler(object):
             
             #Query the database to find the ssid
             cur = conn.cursor()
-            cur.execute('Select id from ssid where name = %s',(ssid,))
+            cur.execute("Select id from ssid where name = %s",(ssid,))
             r = cur.fetchone()
             if r == None:
-                cur.execute('Insert into ssid (name) VALUES(%s) returning id;',(ssid,))
+                cur.execute("Insert into ssid (name) VALUES(%s) returning id;",(ssid,))
                 r = cur.fetchone()
                 ssuid, = r
-                print ssid
                 cur.close()    
                 conn.commit()
             else:
@@ -157,18 +147,36 @@ class Handler(object):
             ssuid = None
             
             
-        #Query the database for a probe by the station
+        #Query the database for a beacon/probe by the station
         #if it was observed in the past 5 minutes,
         #don't add this one to the database                
         cur = conn.cursor()
         
         update = False
-        
-        if isProbe:
-            if ssuid is not None:
-                cur.execute('Select seen from probe left join ssid on probe.ssid=ssid.id where station = %s and ssid.id = %s order by seen desc limit 1;', (suid,ssuid,))
+        if isBeacon:
+            cur.execute("Select seen from beacon left join ssid on beacon.ssid=ssid.id where station = %s and ssid.id = %s order by seen desc limit 1;",(suid,ssuid,))
+            r = cur.fetchone()
+            
+            #If no entry, then update
+            if r == None:
+                update = True
             else:
-                cur.execute('Select seen from probe where station = %s and ssid is null order by seen desc limit 1;', (suid,))
+                seen, = r
+                if (datetime.datetime.utcnow() - seen).total_seconds() > (5*60):
+                    update = True
+            
+            if update:
+                cur.execute("Insert into beacon (station,ssid,seen) VALUES(%s,%s,current_timestamp at time zone 'utc')",(suid,ssuid,))
+                cur.close()
+                conn.commit()
+            else:
+                cur.close()
+                conn.rollback()
+        elif isProbe:
+            if ssuid is not None:
+                cur.execute("Select seen from probe left join ssid on probe.ssid=ssid.id where station = %s and ssid.id = %s order by seen desc limit 1;", (suid,ssuid,))
+            else:
+                cur.execute("Select seen from probe where station = %s and ssid is null order by seen desc limit 1;", (suid,))
             r = cur.fetchone()
             
             if r == None:
@@ -179,15 +187,13 @@ class Handler(object):
                     update = True
                 
             if update:
-                cur.execute("""Insert into probe(station,ssid,seen) VALUES(%s,%s,current_timestamp at time zone 'utc')""",(suid,ssuid,))
+                cur.execute("Insert into probe(station,ssid,seen) VALUES(%s,%s,current_timestamp at time zone 'utc')",(suid,ssuid,))
                 cur.close()
                 conn.commit()
             else:
                 cur.close()
                 conn.rollback()
-
-#bot = telegram.Bot(token='203410933:AAG6avZhedGbVsGZjgEa1x5u-DuNZ3BcjTE')
-
+        
 
 if __name__ == "__main__":
     iface = 'wlan0'
