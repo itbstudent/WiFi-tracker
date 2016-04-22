@@ -4,6 +4,7 @@ import logging
 from wifi_mon import deauth
 from PyQt4.Qt import QWebView, QUrl
 from wigle import Wigle, WigleRatelimitExceeded
+from Outlog import OutLog
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR) # Shut up Scapy
 from scapy.all import *
 conf.verb = 0 # Scapy I thought I told you to shut up
@@ -12,7 +13,7 @@ import probe_scan
 import psycopg2
 import manuf
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-
+import sys
 
 class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow (also QWidget can be used); Window is an object
 
@@ -21,17 +22,24 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 	def __init__(self):					#Defines Window (init method); from now, 'self' will reference to the window; 
 								#everytime a window object is made the init method runs; Core of the application is in __init__
 		super(Window, self).__init__()				#Super returnd parent object (which is QMainWindow);  () - Empty parameter
-		self.setGeometry(50, 50, 1100, 700)			#Set the geometry of the window. (starting X; starting Y; width; length)
+		self.setGeometry(50, 50, 1050, 650)			#Set the geometry of the window. (starting X; starting Y; width; length)
 		self.setWindowTitle("Wifi Probe Scanner Project")		#Set title of the window (Window name)
 		self.setWindowIcon(QtGui.QIcon('itb.png'))		#Set the image in the window name (doesn't seem to work in Linux)
 		
 		pic = QtGui.QLabel(self)
-		pic.setGeometry(650,50,500,500)
+		pic.setGeometry(505,45,520,520)
 		#use full ABSOLUTE path to the image, not relative
 		pic.setPixmap(QtGui.QPixmap(os.getcwd() + "/python.jpg"))
 		frame = QtGui.QGroupBox(self)    
 		frame.setTitle("Google Map")
-		frame.setGeometry(650,25,500,500)
+		frame.setGeometry(500,40,515,515)
+		
+		console = QtGui.QTextEdit(self)
+		#console.setTitle("Console output")
+		console.setGeometry (25,400,450,200)
+		sys.stdout = OutLog(console,sys.stdout)
+		sys.stderr = OutLog(console,sys.stderr, QtGui.QColor(255,0,0))
+		
 		
 	# ===== Main Menu ===== 
 									#Menu Choices
@@ -41,7 +49,7 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		monitorMode.triggered.connect(self.wifi_monitor)	#Calls the method for enabling Wi-Fi monitor mode
 
 		launchScan = QtGui.QAction("& Launch Probe Scan", self)	#Defines action for Scanning Probes
-		launchScan.setShortcut("Ctrl+S")			#Sets shortcut for action
+		launchScan.setShortcut("Ctrl+P")			#Sets shortcut for action
 		launchScan.setStatusTip("Start Wi-Fi Scan")		#Information shown in the status bar (doesn't work in the linux)
 		launchScan.triggered.connect(self.probe_scan)		#Calls the method for scanning probes
 
@@ -51,7 +59,7 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		quitAction.triggered.connect(self.close_application)	#Calls the method for closing the application
 		
 		cleardb = QtGui.QAction("& Clear database from records", self)	#Defines action for truncating tables
-		cleardb.setShortcut("Ctrl+D")			#Sets shortcut for action
+		cleardb.setShortcut("Ctrl+F")			#Sets shortcut for action
 		cleardb.setStatusTip("Clear database")		#Information shown in the status bar 
 		cleardb.triggered.connect(self.clear_db)		#Calls the method for truncating tables
 		
@@ -66,31 +74,39 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		updmanuf.triggered.connect(self.manufUpdate)		#Calls the method for truncating tables
 		
 		disable = QtGui.QAction("& Disable Monitor mode", self)	#Defines action for disabling monitor mode 
-		disable.setShortcut("Ctrl+S")			#Sets shortcut for action
+		disable.setShortcut("Ctrl+D")			#Sets shortcut for action
 		disable.setStatusTip("Disabling monitor mode")		#Information shown in the status bar 
 		disable.triggered.connect(self.disable_monitor)		#Calls the method for disabling monitor mode
 		
-		deauthall = QtGui.QAction("& Disable Monitor mode", self)	#Defines action for deauthenticating all devices around 
-		deauthall.setShortcut("Ctrl+S")			#Sets shortcut for action
-		deauthall.setStatusTip("Disabling monitor mode")		#Information shown in the status bar 
+		deauthall = QtGui.QAction("& Deauthenticate all", self)	#Defines action for deauthenticating all devices around 
+		deauthall.setShortcut("Ctrl+Z")			#Sets shortcut for action
+		deauthall.setStatusTip("Deauthenticate all")		#Information shown in the status bar 
 		deauthall.triggered.connect(self.deauth_all)		#Calls the method for deauthenticating all devices around
+		
+		showgoogle = QtGui.QAction("& Show Google Map", self)	#Defines action for deauthenticating all devices around 
+		showgoogle.setShortcut("Ctrl+G")			#Sets shortcut for action
+		showgoogle.setStatusTip("Show Google Map")		#Information shown in the status bar 
+		showgoogle.triggered.connect(self.deauth_all)		#Calls the method for deauthenticating all devices around
+		
 		
 		self.statusBar()					#Calls the status bar (to show setStatusTip), nothing else is needed!
 		
 									#Main Menu
 									
 		mainMenu = self.menuBar()				#menuBar object is assigned to mainMenu, because we will need to modify it/add to it
-		fileMenu = mainMenu.addMenu('&Menu')			#Defines one line of menu and assigne it a name
+		fileMenu = mainMenu.addMenu('&Menu')			#Defines one line of menu and assigned it a name
 		fileMenu.addAction(monitorMode)				#Adds action to the menu line - Wi-Fi Monitor Mode
 		fileMenu.addAction(launchScan)				#Adds action to the menu line - Scanning Probes
-		fileMenu.addAction(plotMap)				#Adds action to the menu line - generate map	
-		fileMenu.addAction(disable)				#Adds action to the menu line - generate map	
+		fileMenu.addAction(plotMap)				#Adds action to the menu line - get coordinates and generate map	
+		fileMenu.addAction(disable)				#Adds action to the menu line - disable wifi 	
+		fileMenu.addAction(showgoogle)			#Adds action to the menu line - show map
 		fileMenu.addAction(quitAction)				#Adds action to the menu line - Exit Application	
 		
 		fileMenu2 = mainMenu.addMenu('&Options')
 		fileMenu2.addAction(cleardb)				#Adds action to the menu line - Clear DB
 		fileMenu2.addAction(updmanuf)				#Adds action to the menu line - Clear DB
 		fileMenu2.addAction(deauthall)				#Adds action to the menu line - Clear DB
+		
 		
 		self.home()						#Refers to the next method
 
@@ -138,6 +154,13 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		btn6.move(250, 330)					#Defines location of the button on the screen (starting X; starting Y)
 		btn6.setStyleSheet("background-color: red")
 		
+		btn7 = QtGui.QPushButton("Show google map", self)	#Defines a button with parameter name
+		btn7.clicked.connect(self.deauth_all)			#Defines an event (through .connect), event is Scanning Probes
+		btn7.resize(500, 40)					#Defines the size of the button (width; length)
+		btn7.move(500, 560)					#Defines location of the button on the screen (starting X; starting Y)
+		btn7.setStyleSheet("background-color: green")
+		
+		
 											#Style Choice (the GUI part)
 		#print(self.style().objectName())			#Prints out what is default style
 		styleChoice = QtGui.QLabel("Choose device", self)	#Defines the style object with parameter (Name) -> Its the label saying what it is
@@ -145,10 +168,11 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		dropdown = self.getStations()
 		for item in dropdown:
 			comboBox.addItem (str(item))				#This was a test style, doesn't do anything, but it doesn't break the app!
-		comboBox.resize(200,40)
+		comboBox.resize(200,20)
 		comboBox.move(250, 50)					#Defines location of the box on the screen (starting X; starting Y)
 		styleChoice.move(250, 25)				#Defines location of the style choice on the screen (starting X; starting Y)
 		comboBox.activated[str].connect(self.style_choice)	#Activate and display the default/current style/value and connect it to method style_choice
+		
 		
 		self.show()						#Shows the application in the end (call the graphics from memory and display it)
 
@@ -163,7 +187,7 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		
 	def wifi_monitor(self):						#Method for closing application
 		try:
-			startmon = wifi_mon.start_mon_mode(iface)
+			wifi_mon.start_mon_mode(iface)
 			QtGui.QMessageBox.information(self, "Enabling Monitor Mode", "Monitor mode started on strongest interface %s"% (iface))
 		except Exception, msg:
 			QtGui.QMessageBox.information(self, "Enabling Monitor Mode", "Enabling monitor mode failed due to error: %s" % (msg,))
