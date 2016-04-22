@@ -35,13 +35,22 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		frame.setGeometry(500,40,515,515)
 		
 		console = QtGui.QTextEdit(self)
-		#console.setTitle("Console output")
 		console.setGeometry (25,400,450,200)
 		sys.stdout = OutLog(console,sys.stdout)
 		sys.stderr = OutLog(console,sys.stderr, QtGui.QColor(255,0,0))
 		
+		# ===== Label for Combobox ===== 
 		
-	# ===== Main Menu ===== 
+		frame1 = QtGui.QGroupBox(self)    
+		frame1.setTitle("Selected Device")
+		frame1.setGeometry(250,260,200,50)
+		
+		labelcombo = QtGui.QLabel(self)
+		labelcombo.move(300,275)
+		labelcombo.setText("")
+		labelcombo.setText("<font style='color: red; size =24;'>TEST LABEL</font>")
+		
+		# ===== Main Menu ===== 
 									#Menu Choices
 		monitorMode = QtGui.QAction("& Enable Monitor Mode", self)	#Defines action for Wi-Fi Monitor Mode
 		monitorMode.setShortcut("Ctrl+M")			#Sets shortcut for Wi-Fi monitor mode action
@@ -107,7 +116,18 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		fileMenu2.addAction(updmanuf)				#Adds action to the menu line - Clear DB
 		fileMenu2.addAction(deauthall)				#Adds action to the menu line - Clear DB
 		
+		styleChoice = QtGui.QLabel("Choose device", self)	#Defines the style object with parameter (Name) -> Its the label saying what it is
+		comboBox = QtGui.QComboBox(self)			#QComBox is/means drop down button, defines dropdown object
 		
+		dropdown = self.getStations()
+		for item in dropdown:
+			comboBox.addItem (str(item))				#This was a test style, doesn't do anything, but it doesn't break the app!
+		comboBox.resize(200,20)
+		comboBox.move(250, 50)					#Defines location of the box on the screen (starting X; starting Y)
+		styleChoice.move(250, 25)				#Defines location of the style choice on the screen (starting X; starting Y)
+		#comboBox.activated[str].connect(self.slot_1)	#Activate and display the default/current style/value and connect it to method style_choice
+		comboBox.currentIndexChanged.connect(self.slot_1)
+	
 		self.home()						#Refers to the next method
 
 
@@ -120,8 +140,6 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		btn1.clicked.connect(self.wifi_monitor)			#Defines an event (through .connect), event is Monitor Mode
 		btn1.resize(180, 40)					#Defines the size of the button (width; length) or PyQt suggest minimum size btn1.minimumSizeHint()
 		btn1.move(25, 50)					#Defines location of the button on the screen (starting X; starting Y)
-		btn1.setStyleSheet("QPushButton { background-color: None }"
-						   "QPushButton:pressed { background-color: green }")							
 									#Button for Scanning Probes
 		#self.progress = QtGui.QProgressBar(self)
 		#self.progress.setGeometry(50, 620, 1100, 20)
@@ -156,28 +174,21 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		
 		btn7 = QtGui.QPushButton("Show google map", self)	#Defines a button with parameter name
 		btn7.clicked.connect(self.deauth_all)			#Defines an event (through .connect), event is Scanning Probes
-		btn7.resize(500, 40)					#Defines the size of the button (width; length)
+		btn7.resize(510, 40)					#Defines the size of the button (width; length)
 		btn7.move(500, 560)					#Defines location of the button on the screen (starting X; starting Y)
 		btn7.setStyleSheet("background-color: green")
 		
 		
 											#Style Choice (the GUI part)
 		#print(self.style().objectName())			#Prints out what is default style
-		styleChoice = QtGui.QLabel("Choose device", self)	#Defines the style object with parameter (Name) -> Its the label saying what it is
-		comboBox = QtGui.QComboBox(self)			#QComBox is/means drop down button, defines dropdown object
-		dropdown = self.getStations()
-		for item in dropdown:
-			comboBox.addItem (str(item))				#This was a test style, doesn't do anything, but it doesn't break the app!
-		comboBox.resize(200,20)
-		comboBox.move(250, 50)					#Defines location of the box on the screen (starting X; starting Y)
-		styleChoice.move(250, 25)				#Defines location of the style choice on the screen (starting X; starting Y)
-		comboBox.activated[str].connect(self.style_choice)	#Activate and display the default/current style/value and connect it to method style_choice
-		
 		
 		self.show()						#Shows the application in the end (call the graphics from memory and display it)
 
 
 	# ===== Methods ===== 
+	
+	def slot_1(self):
+			Window.labelcombo.setText(self.comboBox.currentText())
 	
 	def style_choice(self, text):					#Defines the method of the style choice (the 'Doing something' with the choice)...
 									# & pass self and text parameter
