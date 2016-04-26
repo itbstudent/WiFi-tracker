@@ -7,7 +7,8 @@ import struct
 import psycopg2
 import datetime
 import manuf 
-
+import os
+import time
 
 MGMT_TYPE = 0x0
 PROBE_SUBTYPE = 0x04
@@ -33,6 +34,17 @@ class Handler(object):
             self.conn = psycopg2.connect(database='wifi', user='probecap', host = 'localhost', password='pass')
             
         return self.conn
+    
+    def channel_hopping(self):
+        chans = range(14)
+        wait = 1
+        i = 0
+        while True:
+            os.system('iw dev wlan0 set channel %d' % chans[i])
+            i = (i + 1) % len(chans)
+            time.sleep(wait)
+            print i
+
         
     def __call__(self,pkt):
         #If the packet is not a management packet ignore it
@@ -68,14 +80,20 @@ class Handler(object):
         mac = encodeMac(srcAddr)
         #If never seen, add the station to the database
         if r == None:
+            ##############GETTING MODEL BY MAC###################
             getmac = manuf.MacParser()
             model = getmac.get_manuf(mac)
             print model,mac
+            #####################################################
+            
+            ###############TELEGRAM BOT########################### 
             #sending alert when new Mac is found
             #bot = telegram.Bot(token='203410933:AAG6avZhedGbVsGZjgEa1x5u-DuNZ3BcjTE')
             #updates = bot.getUpdates()
             #chat_id = '199913115'
             #bot.sendMessage(chat_id=chat_id, text='ALERT! Wifi perimeter violation Mac %s Model %s' % (mac,model,))
+            ######################################################
+            
             #insert new mac into DB
             cur.execute("""Insert into station(mac, model, firstSeen,lastSeen) VALUES(%s, %s, current_timestamp at time zone 'utc',current_timestamp at time zone 'utc') returning id;""",(encodeMac(srcAddr),model,))
             r = cur.fetchone()
@@ -146,55 +164,20 @@ class Handler(object):
         else:
             ssuid = None
             
-            
         #Query the database for a beacon/probe by the station
         #if it was observed in the past 5 minutes,
         #don't add this one to the database                
         cur = conn.cursor()
         
-        update = False
         if isBeacon:
-            cur.execute("Select seen from beacon left join ssid on beacon.ssid=ssid.id where station = %s and ssid.id = %s order by seen desc limit 1;",(suid,ssuid,))
-            r = cur.fetchone()
-            
-            #If no entry, then update
-            if r == None:
-                update = True
-            else:
-                seen, = r
-                if (datetime.datetime.utcnow() - seen).total_seconds() > (5*60):
-                    update = True
-            
-            if update:
-                cur.execute("Insert into beacon (station,ssid,seen) VALUES(%s,%s,current_timestamp at time zone 'utc')",(suid,ssuid,))
-                cur.close()
-                conn.commit()
-            else:
-                cur.close()
-                conn.rollback()
+            cur.execute("Insert into beacon (station,ssid,seen) VALUES(%s,%s,current_timestamp at time zone 'utc')",(suid,ssuid,))
+            cur.close()
+            conn.commit()
         elif isProbe:
-            if ssuid is not None:
-                cur.execute("Select seen from probe left join ssid on probe.ssid=ssid.id where station = %s and ssid.id = %s order by seen desc limit 1;", (suid,ssuid,))
-            else:
-                cur.execute("Select seen from probe where station = %s and ssid is null order by seen desc limit 1;", (suid,))
-            r = cur.fetchone()
+            cur.execute("Insert into probe(station,ssid,seen) VALUES(%s,%s,current_timestamp at time zone 'utc')",(suid,ssuid,))
+            cur.close()
+            conn.commit()
             
-            if r == None:
-                update = True
-            else:
-                seen, = r 
-                if (datetime.datetime.utcnow() - seen).total_seconds() > (5*60):
-                    update = True
-                
-            if update:
-                cur.execute("Insert into probe(station,ssid,seen) VALUES(%s,%s,current_timestamp at time zone 'utc')",(suid,ssuid,))
-                cur.close()
-                conn.commit()
-            else:
-                cur.close()
-                conn.rollback()
-        
-
 if __name__ == "__main__":
     iface = 'wlan0'
     try:
