@@ -25,7 +25,7 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 	def __init__(self):					#Defines Window (init method); from now, 'self' will reference to the window; 
 								#everytime a window object is made the init method runs; Core of the application is in __init__
 		super(Window, self).__init__()				#Super returnd parent object (which is QMainWindow);  () - Empty parameter
-		self.setGeometry(50, 50, 1050, 650)			#Set the geometry of the window. (starting X; starting Y; width; length)
+		self.setGeometry(50, 50, 1060, 650)			#Set the geometry of the window. (starting X; starting Y; width; length)
 		self.setWindowTitle("Wifi Probe Scanner Project")		#Set title of the window (Window name)
 		self.setWindowIcon(QtGui.QIcon('itb.png'))		#Set the image in the window name (doesn't seem to work in Linux)
 		
@@ -34,7 +34,7 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		pic.setPixmap(QtGui.QPixmap(os.getcwd() + "/wifi-hack.jpg"))
 		frame = QtGui.QGroupBox(self)    
 		frame.setTitle("Google Map")
-		frame.setGeometry(490,40,550,560)
+		frame.setGeometry(490,25,550,560)
 		
 		console = QtGui.QTextEdit(self)
 		console.setGeometry (25,400,400,200)
@@ -194,7 +194,7 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		if choice == QtGui.QMessageBox.Yes:			#if/else statement - if yes
 			print("Starting probes collection")	#Sends a message before quiting (in cmd & loggs)
 			handler = probe_scan.Handler()                
-			sniff = probe_scan.sniff(iface=iface,prn=handler,store=0,timeout=20)
+			sniff = probe_scan.sniff(iface=iface,prn=handler,store=0,timeout=60)
 			self.comboBx.clear()
 			dropdown = self.getStations()
 			for item in dropdown:
@@ -287,13 +287,13 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 						plot = gmap.scatter(lats,longis,'k', marker=True)
 						drawmap = gmap.draw("%s.html" % str(text,))
 						web_page = QWebView(self)
-						web_page.setGeometry(475,40,545,545)
+						web_page.setGeometry(490,50,550,550)
 						web_page.load(QUrl("%s.html" % str(text,))) #file:///root/git/WiFi-tracker/default.html
 						web_page.show()
 				else:
 					print ("Wigle couldn`t find coordinates for " + str(item))	
 					
-	def close_application(self):					#Method for closing application
+	def close_application(self):		#Method for closing application
 										#Pop up question box with yes/no option; parameters: self, Wwindow title, Question, Yes or No
 		choice = QtGui.QMessageBox.question(self, "Exit Application", "Do you want to exit the application?", QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
 		if choice == QtGui.QMessageBox.Yes:			#if/else statement - if yes
