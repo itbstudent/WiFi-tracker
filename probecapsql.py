@@ -31,7 +31,7 @@ cur = con.cursor()
 try:
     cur.execute('CREATE TABLE IF NOT EXISTS station(id serial not null UNIQUE,mac macaddr not null, model varchar(32), firstSeen timestamp without time zone not null,lastSeen timestamp without time zone,PRIMARY KEY(mac));')
     cur.execute('grant usage,select on sequence station_id_seq to probecap;')
-    cur.execute('CREATE TABLE IF NOT EXISTS ssid(id serial not null UNIQUE,name varchar(32) not null, lat numeric, long numeric, PRIMARY KEY(name));')
+    cur.execute('CREATE TABLE IF NOT EXISTS ssid(id serial not null UNIQUE,name varchar(32) not null, PRIMARY KEY(name));')
     cur.execute('grant usage,select on sequence ssid_id_seq to probecap;')
     cur.execute('CREATE TABLE IF NOT EXISTS probe(station int not null,foreign key (station) references station(id),ssid int null,foreign key (ssid) references ssid(id),seen timestamp without time zone);')
     cur.execute('CREATE TABLE IF NOT EXISTS beacon(station int not null,foreign key (station) references station(id),ssid int references ssid(id) null,seen timestamp without time zone);')

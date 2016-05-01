@@ -16,7 +16,7 @@ import probe_scan
 import psycopg2
 import manuf
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-
+import csv
 
 class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow (also QWidget can be used); Window is an object
 
@@ -30,12 +30,11 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		self.setWindowIcon(QtGui.QIcon('itb.png'))		#Set the image in the window name (doesn't seem to work in Linux)
 		
 		pic = QtGui.QLabel(self)
-		pic.setGeometry(475,45,550,550)
-		#use full ABSOLUTE path to the image, not relative
-		pic.setPixmap(QtGui.QPixmap(os.getcwd() + "/python.jpg"))
+		pic.setGeometry(490,50,550,550) 
+		pic.setPixmap(QtGui.QPixmap(os.getcwd() + "/wifi-hack.jpg"))
 		frame = QtGui.QGroupBox(self)    
 		frame.setTitle("Google Map")
-		frame.setGeometry(475,40,545,545)
+		frame.setGeometry(490,40,550,560)
 		
 		console = QtGui.QTextEdit(self)
 		console.setGeometry (25,400,400,200)
@@ -46,12 +45,12 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		
 		frame1 = QtGui.QGroupBox(self)    
 		frame1.setTitle("Selected Device")
-		frame1.setGeometry(250,250,180,50)
+		frame1.setGeometry(220,250,240,50)
 		
 		labelCombo = QtGui.QLabel(self)
-		labelCombo.move(270,260)
+		labelCombo.move(240,260)
 		labelCombo.setText("<font style='color: red;'>NO DEVICE SELECTED</font>")
-		labelCombo.resize(200,50)
+		labelCombo.resize(220,50)
 		# ===== Main Menu ===== 
 									#Menu Choices
 		monitorMode = QtGui.QAction("& Enable Monitor Mode", self)	#Defines action for Wi-Fi Monitor Mode
@@ -118,19 +117,20 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		fileMenu2.addAction(updmanuf)				#Adds action to the menu line - Clear DB
 		fileMenu2.addAction(deauthall)				#Adds action to the menu line - Clear DB
 		
-		styleChoice = QtGui.QLabel("Choose device", self)	#Defines the style object with parameter (Name) -> Its the label saying what it is
-		comboBox = QtGui.QComboBox(self)			#QComBox is/means drop down button, defines dropdown object
+		styleChoice = QtGui.QLabel("Choose device to analyze", self)	#Defines the style object with parameter (Name) -> Its the label saying what it is
+		self.comboBx = QtGui.QComboBox(self)			#QComBox is/means drop down button, defines dropdown object
 		
 		dropdown = self.getStations()
 		for item in dropdown:
-			comboBox.addItem (str(item))				#This was a test style, doesn't do anything, but it doesn't break the app!
-		comboBox.resize(180,20)
-		comboBox.move(250, 50)					#Defines location of the box on the screen (starting X; starting Y)
-		styleChoice.move(250, 25)				#Defines location of the style choice on the screen (starting X; starting Y)
-		comboBox.currentIndexChanged.connect(
-			lambda: labelCombo.setText(comboBox.currentText()))
-		comboBox.activated[str].connect(self.getCoordinates)	#Activate and display the default/current style/value and connect it to method style_choice
-		
+			self.comboBx.addItem (str(item))
+							#This was a test style, doesn't do anything, but it doesn't break the app!
+		self.comboBx.resize(240,20)
+		self.comboBx.move(220, 50)					#Defines location of the box on the screen (starting X; starting Y)
+		styleChoice.move(240, 25)
+		styleChoice.resize(240,20)				#Defines location of the style choice on the screen (starting X; starting Y)
+		self.comboBx.currentIndexChanged.connect(
+			lambda: labelCombo.setText(self.comboBx.currentText()))
+		self.comboBx.activated[str].connect(self.getCoordinates)	#Activate and display the default/current style/value and connect it to method style_choice
 		
 		self.home()						#Refers to the next method
 
@@ -155,7 +155,7 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		btn3 = QtGui.QPushButton("Exit Application", self)	#Defines a button with parameter name
 		btn3.clicked.connect(self.close_application)		#Defines an event (through .connect), event is Close Application
 		btn3.resize(180, 40)					#Defines the size of the button (width; length)
-		btn3.move(25, 260)					#Defines location of the button on the screen (starting X; starting Y)
+		btn3.move(25, 330)					#Defines location of the button on the screen (starting X; starting Y)
 
 									#Button to generate maps from probes
 		btn4 = QtGui.QPushButton("Disable Monitor mode", self)	#Defines a button with parameter name (!!! WHY PASS SELF ???)
@@ -163,23 +163,16 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		btn4.resize(180, 40)					#Defines the size of the button (width; length) or PyQt suggest minimum size btn1.minimumSizeHint()
 		btn4.move(25, 190)					#Defines location of the button on the screen (starting X; starting Y)
 
-		#btn5 = QtGui.QPushButton("Get coordinates", self)	#Defines a button with parameter name (!!! WHY PASS SELF ???)
-		#btn5.clicked.connect(self.getCoordinates)			#Defines an event (through .connect), event is Monitor Mode
-		#btn5.resize(180, 40)					#Defines the size of the button (width; length) or PyQt suggest minimum size btn1.minimumSizeHint()
-		#btn5.move(25, 260)					#Defines location of the button on the screen (starting X; starting Y)
+		btn5 = QtGui.QPushButton("Open csv file", self)	#Defines a button with parameter name (!!! WHY PASS SELF ???)
+		btn5.clicked.connect(self.get_file)			#Defines an event (through .connect), event is Monitor Mode
+		btn5.resize(180, 40)					#Defines the size of the button (width; length) or PyQt suggest minimum size btn1.minimumSizeHint()
+		btn5.move(25, 260)					#Defines location of the button on the screen (starting X; starting Y)
 		
 		btn6 = QtGui.QPushButton("KILL`EM ALL", self)	#Defines a button with parameter name
 		btn6.clicked.connect(self.deauth_all)			#Defines an event (through .connect), event is Scanning Probes
 		btn6.resize(180, 40)					#Defines the size of the button (width; length)
 		btn6.move(250, 330)					#Defines location of the button on the screen (starting X; starting Y)
 		btn6.setStyleSheet("background-color: red")
-		
-		#btn7 = QtGui.QPushButton("Show google map", self)	#Defines a button with parameter name
-		#btn7.clicked.connect(self.deauth_all)			#Defines an event (through .connect), event is Scanning Probes
-		#btn7.resize(510, 40)					#Defines the size of the button (width; length)
-		#btn7.move(500, 560)					#Defines location of the button on the screen (starting X; starting Y)
-		#btn7.setStyleSheet("background-color: green")
-		
 		
 											#Style Choice (the GUI part)
 		#print(self.style().objectName())			#Prints out what is default style
@@ -202,11 +195,15 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 			print("Starting probes collection")	#Sends a message before quiting (in cmd & loggs)
 			handler = probe_scan.Handler()                
 			sniff = probe_scan.sniff(iface=iface,prn=handler,store=0,timeout=20)
-			#Window.comboBox.clear()
-			#Window.comboBox.update()
+			self.comboBx.clear()
+			dropdown = self.getStations()
+			for item in dropdown:
+				self.comboBx.addItem(str(item))				#This was a test style, doesn't do anything, but it doesn't break the app!
+		
 		else:							#if/else statement - else (No)
 			pass						#pass - nothing happens
 	
+			    		
 	def deauth_all(self):						#Method for closing application
 		choice = QtGui.QMessageBox.question(self, "Deauth all devices", "Are you completely sure that you want to do it?", QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
 		if choice == QtGui.QMessageBox.Yes:			#if/else statement - if yes
@@ -237,8 +234,9 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		con.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
 		cur = con.cursor()
 		try:
-			cur.execute("""select distinct s.model from station s where s.lastseen > current_timestamp at time zone 'utc' - (30 * interval '10 minutes');""")
-			stations = [item[0] for item in cur.fetchall()]
+			cur.execute("""select distinct s.model, s.mac from station s where s.lastseen > current_timestamp at time zone 'utc' - (30 * interval '10 minutes') order by s.model;""")
+			stations = cur.fetchall()
+			#stations = [item[0] for item in cur.fetchall()]
 		except psycopg2.DatabaseError, e:
 			print 'Error %s' % e    
 		return stations
@@ -246,46 +244,55 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		con.close()
 		
 	def getCoordinates(self,text):
+		print ("Analyzing data for device: " + text)
+		sep = ','
+		text1 = str(text.split(sep, 1)[1])
+		text1 = str(text1.strip(' )'))
+		text1 = text1[1:-1]
 		lats = []
 		longis = [] 
 		con = psycopg2.connect(database='wifi', user='probecap', host = 'localhost', password='pass')
 		con.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
 		cur = con.cursor()
-		try:
-			cur.execute("select s.name from probe p join ssid s on p.ssid = s.id join station st on p.station = st.id where st.model = %s;", (str(text),))
-			data = cur.fetchall()
-		except psycopg2.DatabaseError, e:
-			print 'Error %s' % e
-		cur.close()
-		con.close()
-		
-		for item in data:
-			try:
-				results = Wigle('itbstudent', 'p@SSW0RD').search(ssid=item,max_results=10) ###add more parameters to search, like lat and lon range for EIRE, time, etc.
-			except WigleRatelimitExceeded:
-					print("Cannot query Wigle - exceeded number of allowed requests")
-		
-			for result in results:
-				lat = ("%(trilat)s" % result)
-				if lat != None:
-					lats.append(float(lat))
-				
-				longi = ("%(trilong)s" % result)
-				if long != None:
-					longis.append(float(longi))	
-				print ("all longs" + str(longis))
-				print ("all lats" + str(lats))
-				
-		gmap = GoogleMapPlotter(53.404800, -6.378041, 9)
-		plot = gmap.scatter(lats,longis,'k', marker=True)
-		drawmap = gmap.draw("%s.html" % str(text,))
-		web_page = QWebView(self)
-		web_page.setGeometry(475,40,545,545)
-		web_page.load(QUrl("%s.html" % str(text,))) #file:///root/git/WiFi-tracker/default.html
-		web_page.show()
-		
-		
-		
+#######################Save all SSID of the selected phone to csv file##############################
+		cur.execute("select distinct ss.name,st.model,st.mac from probe p join station st on st.id = p.station join ssid ss on p.ssid = ss.id where st.mac = %s;", (str(text1),)) 
+		records = cur.fetchall()
+		if records == ([]):
+			print ("No SSIDs found")
+		else:
+			print ('Writing data to file %s.csv' % str(text))
+			writer = csv.writer(open('%s.csv' % str(text) , 'w'))
+		   	for row in records:
+		   		writer.writerow(row)
+#######################WIGLE search for each ssid of selected phone#################################	
+		cur.execute("select distinct s.name from probe p join ssid s on p.ssid = s.id join station st on p.station = st.id where st.mac = %s;", (str(text1),))
+		data = cur.fetchall()
+		if data != ([]):
+			for item in data:
+				try:
+					results = Wigle('itbstudent', 'p@SSW0RD').search(ssid=item,max_results=10) ###add more parameters to search, like lat and lon range for EIRE, time, etc.
+				except WigleRatelimitExceeded:
+						print("Cannot query Wigle - exceeded number of allowed requests")
+				if results != ([]):
+					for result in results:
+						lat = ("%(trilat)s" % result)
+						if lat != None:
+							lats.append(float(lat))
+						longi = ("%(trilong)s" % result)
+						if longi != None:
+							longis.append(float(longi))	
+						print ("Loading coordinates: " + str(lats), str(longis))
+						
+						gmap = GoogleMapPlotter(53.404800, -6.378041, 9)
+						plot = gmap.scatter(lats,longis,'k', marker=True)
+						drawmap = gmap.draw("%s.html" % str(text,))
+						web_page = QWebView(self)
+						web_page.setGeometry(475,40,545,545)
+						web_page.load(QUrl("%s.html" % str(text,))) #file:///root/git/WiFi-tracker/default.html
+						web_page.show()
+				else:
+					print ("Wigle couldn`t find coordinates for " + str(item))	
+					
 	def close_application(self):					#Method for closing application
 										#Pop up question box with yes/no option; parameters: self, Wwindow title, Question, Yes or No
 		choice = QtGui.QMessageBox.question(self, "Exit Application", "Do you want to exit the application?", QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
@@ -293,6 +300,10 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 			sys.exit()					#Exit everything				
 		else:							#if/else statement - else (No)
 			pass		
+	
+	def get_file(self):
+		file_name = QtGui.QFileDialog.getOpenFileName(self, "Open Data File", "", "CSV data files (*.csv)")
+	
 						#pass - nothing happens
 	def disable_monitor(self):
 		try:
@@ -301,6 +312,7 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 			QtGui.QMessageBox.information(self, "Disabling Monitor Mode", "Disabled Monitor mode on %s"% (iface,))
 		except Exception, msg:
 			print msg
+	
 			
 	def clear_db(self):
 		con = psycopg2.connect(database='wifi', user='probecap', host = 'localhost', password='pass')
@@ -313,6 +325,7 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 			print 'Error %s' % e    
 		cur.close()
 		con.close()
+		self.comboBx.clear()
 		
 	def manufUpdate(self):
 		try:
@@ -334,9 +347,3 @@ def run():							# Main Running Method (Function) - run()
 	sys.exit(app.exec_())					# NO DESCRIPTION
 
 run()								#Call 'run' to run code
-
-
-# ___Notes___
-#
-#  If the method belongsto PyQT, it has 'Q' in front of it, like btn = QtGui.QPushButton
-#  If the method belongs to us, it doesn't have a 'Q', like self.home()
