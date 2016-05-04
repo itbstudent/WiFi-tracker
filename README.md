@@ -1,6 +1,6 @@
 # WiFi-tracker
 
-This is a 3rd year students project of [Institute of Technology, Blanchardstown] (itb.ie)
+*This is a 3rd year students project of [Institute of Technology, Blanchardstown] (http://itb.ie)
 
 *Application with PyQt4 GUI. 
 *Collecting wifi management probes and beacons.
