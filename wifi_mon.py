@@ -2,8 +2,12 @@
 
 import logging
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR) # Shut up Scapy
-from scapy.all import *
-conf.verb = 0 # Scapy I thought I told you to shut up
+from scapy.layers.dot11 import Dot11Deauth, Dot11, Dot11Elt, Dot11Beacon, Dot11ProbeResp
+from scapy.config import conf
+from scapy.data import re
+from scapy.ansmachine import send
+from scapy.sendrecv import sniff
+conf.verb = 0 
 import os
 import sys
 import time

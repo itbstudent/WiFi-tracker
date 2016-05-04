@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from PyQt4 import QtGui, QtCore 	#QtGui - imports GUI; Qtcore - imports event handling (to make buttons do things)
 import wifi_mon
 import logging
@@ -5,18 +7,19 @@ from PyQt4.Qt import QWebView, QUrl
 from wigle import Wigle, WigleRatelimitExceeded
 from Outlog import OutLog
 from impacket.dot11 import RadioTap
-from scapy.layers.dot11 import Dot11Deauth
-from probe_scan import encodeMac
+from scapy.layers.dot11 import Dot11Deauth, Dot11
+from scapy.all import sendp
+#from probe_scan import encodeMac
 from gmplot.gmplot import GoogleMapPlotter
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR) # Shut up Scapy
-from scapy.all import *
-conf.verb = 0 # Scapy I thought I told you to shut up
-from subprocess import call
 import probe_scan
 import psycopg2
 import manuf
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 import csv
+import sys 
+import os
+import subprocess
 
 class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow (also QWidget can be used); Window is an object
 
@@ -34,7 +37,7 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		pic.setPixmap(QtGui.QPixmap(os.getcwd() + "/wifi-hack.jpg"))
 		frame = QtGui.QGroupBox(self)    
 		frame.setTitle("Google Map")
-		frame.setGeometry(490,25,550,560)
+		frame.setGeometry(490,25,550,570)
 		
 		console = QtGui.QTextEdit(self)
 		console.setGeometry (25,400,400,200)
@@ -203,7 +206,6 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		else:							#if/else statement - else (No)
 			pass						#pass - nothing happens
 	
-			    		
 	def deauth_all(self):						#Method for closing application
 		choice = QtGui.QMessageBox.question(self, "Deauth all devices", "Are you completely sure that you want to do it?", QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
 		if choice == QtGui.QMessageBox.Yes:			#if/else statement - if yes
@@ -262,8 +264,8 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		else:
 			print ('Writing data to file %s.csv' % str(text))
 			writer = csv.writer(open('%s.csv' % str(text) , 'w'))
-		   	for row in records:
-		   		writer.writerow(row)
+			for row in records:
+				writer.writerow(row)
 #######################WIGLE search for each ssid of selected phone#################################	
 		cur.execute("select distinct s.name from probe p join ssid s on p.ssid = s.id join station st on p.station = st.id where st.mac = %s;", (str(text1),))
 		data = cur.fetchall()
@@ -288,7 +290,7 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 						drawmap = gmap.draw("%s.html" % str(text,))
 						web_page = QWebView(self)
 						web_page.setGeometry(490,50,550,550)
-						web_page.load(QUrl("%s.html" % str(text,))) #file:///root/git/WiFi-tracker/default.html
+						web_page.load(QUrl("%s.html" % str(text,)))
 						web_page.show()
 				else:
 					print ("Wigle couldn`t find coordinates for " + str(item))	
@@ -303,7 +305,9 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 	
 	def get_file(self):
 		file_name = QtGui.QFileDialog.getOpenFileName(self, "Open Data File", "", "CSV data files (*.csv)")
-	
+		if file_name:
+			subprocess.call(["xdg-open", file_name])
+			
 						#pass - nothing happens
 	def disable_monitor(self):
 		try:
@@ -332,7 +336,7 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 			updateoui = manuf.MacParser()
 			updateoui.refresh()
 			QtGui.QMessageBox.information(self, "Updating oui file", "OUI Database file is updated")
- 		except Exception, msg:
+		except Exception, msg:
 			print msg
 
 monitors, interfaces = wifi_mon.iwconfig()

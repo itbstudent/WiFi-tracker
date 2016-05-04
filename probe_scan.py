@@ -2,10 +2,10 @@ import logging
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 
 from scapy.all import sniff
+from scapy.layers.dot11 import Dot11
 import sys
 import struct
 import psycopg2
-import datetime
 import manuf 
 import os
 import time
@@ -48,10 +48,19 @@ class Handler(object):
         
     def __call__(self,pkt):
         #If the packet is not a management packet ignore it
-        if not pkt.type == MGMT_TYPE:
-            return    
         
-        #Extract the payload from the packet
+        if not pkt.haslayer(Dot11):
+            return
+            
+        if not pkt.type == MGMT_TYPE:
+            return
+        
+        isBeacon = pkt.subtype == BEACON_SUBTYPE
+        isProbe = pkt.subtype == PROBE_SUBTYPE
+        if not (isBeacon or isProbe):
+            return
+        
+                        #Extract the payload from the packet
         payload = buffer(str(pkt.payload))
         #Carve out just the header
         headerSize = struct.calcsize(FMT_HEADER_80211)
@@ -106,10 +115,10 @@ class Handler(object):
         conn.commit()
         
         #If the packet subtype is not probe or beacon ignore the rest of it
-        isBeacon = pkt.subtype == BEACON_SUBTYPE
-        isProbe = pkt.subtype == PROBE_SUBTYPE
-        if not (isBeacon or isProbe):
-            return
+        #isBeacon = pkt.subtype == BEACON_SUBTYPE
+        #isProbe = pkt.subtype == PROBE_SUBTYPE
+        #if not (isBeacon or isProbe):
+         #   return
         
         #Extract each tag from the payload
         tags = payload[headerSize:]
@@ -177,7 +186,7 @@ class Handler(object):
             cur.execute("Insert into probe(station,ssid,seen) VALUES(%s,%s,current_timestamp at time zone 'utc')",(suid,ssuid,))
             cur.close()
             conn.commit()
-            
+        
 if __name__ == "__main__":
     iface = 'wlan0'
     try:
