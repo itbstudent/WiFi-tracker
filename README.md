@@ -9,3 +9,12 @@
 * There is a def with telegram bot alerts which contain "mac addr" and station name for security perimeter feature.
 
 * Application is still under development. Need to be PIP packaged with all dependencies.
+
+### Stuff used in this project:
+
+Many thanks for inspiration!
+
+* [Hydrogen] (https://github.com/hydrogen18/probecap)
+* [Wifijammer] (https://github.com/DanMcInerney/wifijammer) 
+* [Viraptor] (https://github.com/viraptor/wigle)
+* [gmplot] (https://pypi.python.org/pypi/gmplot/1.0.5) 
