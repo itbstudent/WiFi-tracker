@@ -29,7 +29,7 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 										#everytime a window object is made the init method runs; Core of the application is in __init__
 		super(Window, self).__init__()					#Super returnd parent object (which is QMainWindow);  () - Empty parameter
 		self.setGeometry(50, 50, 1060, 650)				#Set the geometry of the window. (starting X; starting Y; width; length)
-		self.setWindowTitle("Wifi Probe Scanner Project")		#Set title of the window (Window name)
+		self.setWindowTitle("Wi-Fi Tracker Application")		#Set title of the window (Window name)
 		self.setWindowIcon(QtGui.QIcon('itb.png'))		
 		
 		# ===== Label for Picture ===== 
@@ -181,7 +181,7 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		btn4.resize(180, 40)					#Defines the size of the button (width; length) or PyQt suggest minimum size btn1.minimumSizeHint()
 		btn4.move(25, 190)					#Defines location of the button on the screen (starting X; starting Y)
 
-		btn5 = QtGui.QPushButton("Open csv file", self)		#Defines a button with parameter name (!!! WHY PASS SELF ???)
+		btn5 = QtGui.QPushButton("Open SSIDs", self)		#Defines a button with parameter name (!!! WHY PASS SELF ???)
 		btn5.clicked.connect(self.get_file)			#Defines an event (through .connect), event is Monitor Mode
 		btn5.resize(180, 40)					#Defines the size of the button (width; length) or PyQt suggest minimum size btn1.minimumSizeHint()
 		btn5.move(25, 260)					#Defines location of the button on the screen (starting X; starting Y)
