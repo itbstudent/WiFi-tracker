@@ -113,13 +113,7 @@ class Handler(object):
             cur.execute("Update station set lastSeen = current_timestamp at time zone 'utc' where id = %s",(suid,))
         cur.close()
         conn.commit()
-        
-        #If the packet subtype is not probe or beacon ignore the rest of it
-        #isBeacon = pkt.subtype == BEACON_SUBTYPE
-        #isProbe = pkt.subtype == PROBE_SUBTYPE
-        #if not (isBeacon or isProbe):
-         #   return
-        
+
         #Extract each tag from the payload
         tags = payload[headerSize:]
         
