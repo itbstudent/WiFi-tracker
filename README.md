@@ -20,7 +20,7 @@ Many thanks authors of the projects below for inspiration!
 * [gmplot] (https://pypi.python.org/pypi/gmplot/1.0.5) 
 * [manuf.py] (https://github.com/coolbho3k/manuf.py)
 
-###TO DO
+###TO-DOs
 * Create a fork of the application acting as a Wi-Fi perimeter monitoring tool
 * Add Telegram bot functionality
 * Enhance security and usability
