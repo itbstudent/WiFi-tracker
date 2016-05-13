@@ -8,14 +8,19 @@
 * Application can also Wifijam last seen beacons.
 * There is a def with telegram bot alerts, which can send "mac addr, station name" for the security perimeter feature of the application.
 
-* Please note, that application is still under development. Application need to be PIP packaged.
+* Please note, that application is still under development. 
 
 ### Stuff used in this project:
 
-Many thanks for inspiration!
+Many thanks authors of the projects below for inspiration!
 
 * [Hydrogen] (https://github.com/hydrogen18/probecap)
 * [Wifijammer] (https://github.com/DanMcInerney/wifijammer) 
 * [Viraptor] (https://github.com/viraptor/wigle)
 * [gmplot] (https://pypi.python.org/pypi/gmplot/1.0.5) 
 * [manuf.py] (https://github.com/coolbho3k/manuf.py)
+
+###TO DO
+* Create a fork of the application acting as a Wi-Fi perimeter monitoring tool
+* Add Telegram bot functionality
+* Enhance security and usability
