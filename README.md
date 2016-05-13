@@ -18,3 +18,4 @@ Many thanks for inspiration!
 * [Wifijammer] (https://github.com/DanMcInerney/wifijammer) 
 * [Viraptor] (https://github.com/viraptor/wigle)
 * [gmplot] (https://pypi.python.org/pypi/gmplot/1.0.5) 
+* [manuf.py] (https://github.com/coolbho3k/manuf.py)
