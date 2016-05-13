@@ -9,7 +9,6 @@ from Outlog import OutLog
 from impacket.dot11 import RadioTap
 from scapy.layers.dot11 import Dot11Deauth, Dot11
 from scapy.all import sendp
-#from probe_scan import encodeMac
 from gmplot.gmplot import GoogleMapPlotter
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR) # Shut up Scapy
 import probe_scan
