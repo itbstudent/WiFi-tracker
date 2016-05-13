@@ -81,11 +81,6 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		cleardb.setStatusTip("Clear database")				#Information shown in the status bar 
 		cleardb.triggered.connect(self.clear_db)			#Calls the method for truncating tables from DB
 		
-		#plotMap = QtGui.QAction("& Generate maps from probes", self)	#Defines action for Plotting maps
-		#plotMap.setShortcut("Ctrl+G")					#Sets shortcut for action
-		#plotMap.setStatusTip("Generate maps")				#Information shown in the status bar 
-		#plotMap.triggered.connect(self.getCoordinates)			#Calls the method for generating html
-		
 		updmanuf = QtGui.QAction("& Update oui file", self)		#Defines action for truncating tables
 		updmanuf.setShortcut("Ctrl+M")					#Sets shortcut for action
 		updmanuf.setStatusTip("Update oui file")			#Information shown in the status bar 
@@ -250,8 +245,7 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		try:
 			cur.execute("""select distinct s.model, s.mac from station s where s.lastseen > current_timestamp at time zone 'utc' - (30 * interval '10 minutes') order by s.model;""")
 			stations = cur.fetchall()
-			#stations = [item[0] for item in cur.fetchall()]
-		except psycopg2.DatabaseError, e:
+			except psycopg2.DatabaseError, e:
 			print 'Error %s' % e    
 		return stations
 		cur.close()
@@ -320,7 +314,6 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 		if file_name:
 			subprocess.call(["xdg-open", file_name])
 			
-						#pass - nothing happens
 	def disable_monitor(self):
 		try:
 			wifi_mon.remove_mon_iface(iface)
@@ -353,7 +346,6 @@ class Window(QtGui.QMainWindow):				#Application inherit from QtGui.QMainWindow 
 
 monitors, interfaces = wifi_mon.iwconfig()
 iface = wifi_mon.get_iface(interfaces)
-						# NO DESCRIPTION - This runs a window object (details of the object are above)
 
 def run():							# Main Running Method (Function) - run()
 	if os.geteuid():
